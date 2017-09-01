@@ -1,0 +1,44 @@
+#' Calculates the percentage of cell populations given an experiment
+#It takes an API validation  key (cyto_session), 
+#a list of populations of interest to calculate percentages for (popsofinterest); the reference 
+#population should be listed first e.g. Live for percent of live PBMCs
+#an experiment ID number for the Cytobank experiment of interest (exptID),
+#a list of indices corresponding to samples from the same donor ex list(c(1,2),c(3,4,5)) if rows 1 and 2 are from pt1,3,4,5 are from pt2, etc.(grouping)
+#It takes a list of specimen names as strings (specimennames)identifying the groups. This list should be the same length as grouping
+#It also take a boolean (mean),if mean =TRUE, a mean for all groups in the variable group  is calculated.
+#' @param cyto_session - API authentication token for session
+#' @param markersofinterest - List of names of channel parameters in Cytobank
+#' @param popsofinterest - List of populations of interest to calculate percentages with reference population for percentages listed first
+#' @param exptID - Integer representing an experiment ID on Cytobank account
+#' @param grouping - A list of indices corresponding to samples from the same donor ex list(c(1,2),c(3,4,5)) if rows 1 and 2 are from pt1,3,4,5 are from pt2, etc.
+#' @param specimennames - List of specimen names as strings; needs to be same length as number of groupings
+#' @param means - A boolean if mean =TRUE, a mean for all groups in the variable group  is calculated, otherwise individual means are returned.
+#' @return- Returns either the percentage or mean percentage per specimen of each cell type, as specified by mean parameter
+#' @examples \donttest{
+#' library(CytobankAPI)
+#' cyto_session <- authenticate(site="premium", username="myusername", password="mypassword")
+#' markersofinterest<-c("CD3","CD56")
+#' popsofinterest<-c("CD4 T cells","NK cells")
+#' exptID=4
+#' grouping<-list(c(1,2),c(3,4,5),c(6,7))
+#' specimennames<-c("Patient1","Patient2","Control1")
+#' means=T
+#' percentevent(cyto_session,markersofinterest,popsofinterest,exptID,grouping,specimennames,means)
+#' }
+#' @export
+percentevent<-function(cyto_session,markersofinterest,popsofinterest,exptID,grouping,specimennames,means){
+  eventcounts<-analyzedata(cyto_session = cyto_session,markersofinterest = markersofinterest,popsofinterest =popsofinterest ,exptID=exptID,type=TRUE)
+  colnames(eventcounts)=popsofinterest
+  perevent=calcperevent(eventcounts)
+  if(means==TRUE){
+    perevent[,2:length(perevent[1,])]
+    meanpercent<-apply(perevent[grouping[[1]],],2,mean)
+    for (m in 2:length(grouping)){
+      meanpercent<-cbind(meanpercent,apply(perevent[grouping[[m]],],2,mean))
+    }
+    colnames(meanpercent)<-specimennames
+  }else{
+    meanpercent=perevent
+  }
+  return(meanpercent)
+}
